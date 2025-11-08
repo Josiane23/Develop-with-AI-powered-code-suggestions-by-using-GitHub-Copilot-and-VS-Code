@@ -27,6 +27,25 @@ document.addEventListener("DOMContentLoaded", () => {
           <p><strong>Availability:</strong> ${spotsLeft} spots left</p>
         `;
 
+        // Participants section (bulleted list)
+        const participantsDiv = document.createElement("div");
+        participantsDiv.className = "participants";
+
+        const participantsHeader = document.createElement("strong");
+        participantsHeader.textContent = "Participants:";
+        participantsDiv.appendChild(participantsHeader);
+
+        const ul = document.createElement("ul");
+        // Create list items for each participant
+        details.participants.forEach((participant) => {
+          const li = document.createElement("li");
+          li.textContent = participant;
+          ul.appendChild(li);
+        });
+
+        participantsDiv.appendChild(ul);
+        activityCard.appendChild(participantsDiv);
+
         activitiesList.appendChild(activityCard);
 
         // Add option to select dropdown
@@ -62,6 +81,9 @@ document.addEventListener("DOMContentLoaded", () => {
         messageDiv.textContent = result.message;
         messageDiv.className = "success";
         signupForm.reset();
+        // Refresh activities list to show new participant
+        activitySelect.innerHTML = `<option value="">-- Select an activity --</option>`;
+        fetchActivities();
       } else {
         messageDiv.textContent = result.detail || "An error occurred";
         messageDiv.className = "error";
