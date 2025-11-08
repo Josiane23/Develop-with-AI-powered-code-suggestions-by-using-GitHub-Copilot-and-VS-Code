@@ -7,11 +7,15 @@ document.addEventListener("DOMContentLoaded", () => {
   // Function to fetch activities from API
   async function fetchActivities() {
     try {
-      const response = await fetch("/activities");
+  // Avoid returning a cached response so UI reflects recent changes
+  const response = await fetch("/activities", { cache: "no-store" });
       const activities = await response.json();
 
-      // Clear loading message
-      activitiesList.innerHTML = "";
+  // Clear loading message
+  activitiesList.innerHTML = "";
+
+  // Reset activity select options
+  activitySelect.innerHTML = `<option value="">-- Select an activity --</option>`;
 
       // Populate activities list
       Object.entries(activities).forEach(([name, details]) => {
@@ -36,10 +40,57 @@ document.addEventListener("DOMContentLoaded", () => {
         participantsDiv.appendChild(participantsHeader);
 
         const ul = document.createElement("ul");
-        // Create list items for each participant
+        // Create list items for each participant (hidden bullets, delete icon)
         details.participants.forEach((participant) => {
           const li = document.createElement("li");
-          li.textContent = participant;
+          li.className = "participant-item";
+
+          const span = document.createElement("span");
+          span.className = "participant-email";
+          span.textContent = participant;
+
+          const delBtn = document.createElement("button");
+          delBtn.type = "button";
+          delBtn.className = "participant-delete";
+          delBtn.setAttribute("aria-label", `Remove ${participant} from ${name}`);
+          delBtn.innerHTML = "&times;"; // simple cross icon
+
+          // Wire up delete handler
+          delBtn.addEventListener("click", async (e) => {
+            e.preventDefault();
+            // Call DELETE endpoint to remove participant
+            try {
+              const resp = await fetch(
+                `/activities/${encodeURIComponent(name)}/participants?email=${encodeURIComponent(participant)}`,
+                { method: "DELETE" }
+              );
+
+              const resJson = await resp.json();
+              if (resp.ok) {
+                messageDiv.textContent = resJson.message || "Participant removed";
+                messageDiv.className = "message success";
+                messageDiv.classList.remove("hidden");
+                // Refresh activities to reflect change and wait for it to finish
+                await fetchActivities();
+              } else {
+                messageDiv.textContent = resJson.detail || "Could not remove participant";
+                messageDiv.className = "message error";
+                messageDiv.classList.remove("hidden");
+              }
+
+              // Hide message after 4 seconds
+              setTimeout(() => messageDiv.classList.add("hidden"), 4000);
+            } catch (err) {
+              console.error("Error removing participant:", err);
+              messageDiv.textContent = "Failed to remove participant. Try again.";
+              messageDiv.className = "message error";
+              messageDiv.classList.remove("hidden");
+              setTimeout(() => messageDiv.classList.add("hidden"), 4000);
+            }
+          });
+
+          li.appendChild(span);
+          li.appendChild(delBtn);
           ul.appendChild(li);
         });
 
@@ -79,14 +130,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (response.ok) {
         messageDiv.textContent = result.message;
-        messageDiv.className = "success";
+        messageDiv.className = "message success";
         signupForm.reset();
-        // Refresh activities list to show new participant
-        activitySelect.innerHTML = `<option value="">-- Select an activity --</option>`;
-        fetchActivities();
+  // Refresh activities list to show new participant and wait for it to finish
+  await fetchActivities();
       } else {
         messageDiv.textContent = result.detail || "An error occurred";
-        messageDiv.className = "error";
+        messageDiv.className = "message error";
       }
 
       messageDiv.classList.remove("hidden");
